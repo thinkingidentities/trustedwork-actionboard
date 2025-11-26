@@ -1,8 +1,10 @@
-// Agents Panel - Shows federation lobes and their status
+// Agents Panel - Shows federation lobes, MCP servers, and their status
 
 import React from "react";
 import { useFederationStatus } from "../../hooks/useFederationStatus";
+import { useMCPStatus } from "../../hooks/useMCPStatus";
 import type { Agent } from "../../types/federation";
+import type { MCPServer, MCPServerStatus } from "../../types/mcp";
 
 const styles = {
   container: {
@@ -55,10 +57,50 @@ const styles = {
     borderTop: "1px solid rgba(255,255,255,0.1)",
     margin: "16px 0",
   },
-  mcpPlaceholder: {
+  mcpItem: {
+    display: "flex",
+    alignItems: "center",
+    padding: "8px 10px",
+    marginBottom: 4,
+    borderRadius: 6,
+    background: "rgba(255, 255, 255, 0.03)",
+    border: "1px solid rgba(255, 255, 255, 0.08)",
     fontSize: "12px",
+  },
+  mcpIcon: {
+    marginRight: 8,
+    fontSize: "14px",
+  },
+  mcpInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  mcpName: {
+    fontWeight: 500,
+    whiteSpace: "nowrap" as const,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  mcpEndpoint: {
+    fontSize: "10px",
     opacity: 0.5,
-    fontStyle: "italic",
+    whiteSpace: "nowrap" as const,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  mcpStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: "50%",
+    marginLeft: 8,
+  },
+  mcpStats: {
+    fontSize: "11px",
+    opacity: 0.6,
+    marginTop: 8,
+    padding: "6px 8px",
+    background: "rgba(255, 255, 255, 0.03)",
+    borderRadius: 4,
   },
   refreshButton: {
     background: "transparent",
@@ -143,10 +185,77 @@ const AgentItem = React.memo(({ agent }: AgentItemProps) => (
 ));
 AgentItem.displayName = "AgentItem";
 
+// MCP Server status helpers
+function getMCPStatusColor(status: MCPServerStatus): string {
+  switch (status) {
+    case "connected":
+      return "#00ff88";
+    case "connecting":
+      return "#fbbf24";
+    case "disconnected":
+      return "#6b7280";
+    case "error":
+      return "#ef4444";
+    default:
+      return "#6b7280";
+  }
+}
+
+function getMCPIcon(id: string): string {
+  const icons: Record<string, string> = {
+    "hippocamp-console": "🧠",
+    "fireworks-ws": "✨",
+    "neo4j-ep1": "🔷",
+    "neo4j-nessie": "🔶",
+    "matrix-synapse": "💬",
+  };
+  return icons[id] || "⚡";
+}
+
+interface MCPServerItemProps {
+  server: MCPServer;
+  onCheck?: () => void;
+}
+
+const MCPServerItem = React.memo(({ server, onCheck }: MCPServerItemProps) => (
+  <div
+    style={styles.mcpItem}
+    role="button"
+    tabIndex={0}
+    onClick={onCheck}
+    title={server.description}
+  >
+    <span style={styles.mcpIcon}>{getMCPIcon(server.id)}</span>
+    <div style={styles.mcpInfo}>
+      <div style={styles.mcpName}>{server.name}</div>
+      <div style={styles.mcpEndpoint}>{server.endpoint}</div>
+    </div>
+    <div
+      style={{
+        ...styles.mcpStatusDot,
+        background: getMCPStatusColor(server.status),
+      }}
+      title={server.status}
+    />
+  </div>
+));
+MCPServerItem.displayName = "MCPServerItem";
+
 export const AgentsPanel = React.memo(() => {
-  const { agents, isLoading, refresh } = useFederationStatus({
+  const { agents, isLoading: agentsLoading, refresh: refreshAgents } = useFederationStatus({
     pollInterval: 10000,
   });
+
+  const { servers, isLoading: mcpLoading, stats, refresh: refreshMCP, checkServer } = useMCPStatus({
+    pollInterval: 30000,
+  });
+
+  const isLoading = agentsLoading || mcpLoading;
+
+  const handleRefresh = () => {
+    refreshAgents();
+    refreshMCP();
+  };
 
   return (
     <div style={styles.container} role="navigation" aria-label="Agent List">
@@ -154,9 +263,9 @@ export const AgentsPanel = React.memo(() => {
         <div style={styles.sectionTitle}>Federation Lobes</div>
         <button
           style={styles.refreshButton}
-          onClick={() => refresh()}
+          onClick={handleRefresh}
           disabled={isLoading}
-          title="Refresh status"
+          title="Refresh all status"
         >
           {isLoading ? "..." : "↻"}
         </button>
@@ -168,10 +277,33 @@ export const AgentsPanel = React.memo(() => {
 
       <hr style={styles.divider} />
 
-      <div style={styles.sectionTitle}>MCP Servers</div>
-      <div style={styles.mcpPlaceholder}>
-        Connect MCP servers to extend capabilities...
+      <div style={{ display: "flex", alignItems: "center" }}>
+        <div style={styles.sectionTitle}>MCP Servers</div>
+        <span
+          style={{
+            marginLeft: "auto",
+            fontSize: "10px",
+            opacity: 0.6,
+            color: stats.healthy ? "#00ff88" : "#fbbf24",
+          }}
+        >
+          {stats.connected}/{stats.total}
+        </span>
       </div>
+
+      {servers.map((server) => (
+        <MCPServerItem
+          key={server.id}
+          server={server}
+          onCheck={() => checkServer(server.id)}
+        />
+      ))}
+
+      {stats.connected > 0 && (
+        <div style={styles.mcpStats}>
+          {stats.healthy ? "✓ Services healthy" : "⚠ Some services offline"}
+        </div>
+      )}
     </div>
   );
 });

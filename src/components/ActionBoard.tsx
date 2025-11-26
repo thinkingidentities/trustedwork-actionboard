@@ -11,6 +11,7 @@ import "dockview/dist/styles/dockview.css";
 import { AgentsPanel } from "./panels/AgentsPanel";
 import { CorpusCallosumPanel } from "./panels/CorpusCallosumPanel";
 import { FederationPanel } from "./panels/FederationPanel";
+import { HippocampPanel } from "./panels/HippocampPanel";
 
 // Hooks
 import { useLayoutPersistence } from "../hooks/useLayoutPersistence";
@@ -138,9 +139,15 @@ const DEFAULT_PANELS: PanelConfig[] = [
     size: LAYOUT.SIDEBAR_WIDTH,
   },
   {
+    id: "hippocamp",
+    component: "hippocamp",
+    title: "🧠 Hippocamp",
+    direction: "within", // Tab alongside agents panel
+  },
+  {
     id: "federation",
     component: "federation",
-    title: "🧠 Federation",
+    title: "⚡ Federation",
     direction: "right",
     size: LAYOUT.PROPERTIES_WIDTH,
     renderer: "always",
@@ -334,6 +341,11 @@ export default function ActionBoard() {
       federation: () => (
         <PanelErrorBoundary panelId="federation">
           <FederationPanel />
+        </PanelErrorBoundary>
+      ),
+      hippocamp: () => (
+        <PanelErrorBoundary panelId="hippocamp">
+          <HippocampPanel />
         </PanelErrorBoundary>
       ),
     }),
