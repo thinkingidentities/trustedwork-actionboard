@@ -23,6 +23,15 @@ body {
   color: #e0e0e0;
 }
 
+/* Dockview sizing - must be absolute positioned for proper rendering */
+.actionboard-dockview {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
 /* Dockview Theme Overrides */
 .dockview-theme-dark {
   --dv-activegroup-visiblepanel-tab-background-color: #1a1a2e;
