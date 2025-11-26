@@ -4,9 +4,17 @@ import {
   DockviewReadyEvent,
   DockviewApi,
   IDockviewPanelProps,
-  SerializedDockview,
 } from "dockview";
 import "dockview/dist/styles/dockview.css";
+
+// Panel components
+import { AgentsPanel } from "./panels/AgentsPanel";
+import { CorpusCallosumPanel } from "./panels/CorpusCallosumPanel";
+import { FederationPanel } from "./panels/FederationPanel";
+
+// Hooks
+import { useLayoutPersistence } from "../hooks/useLayoutPersistence";
+import { useFederationStatus } from "../hooks/useFederationStatus";
 
 // --- CONSTANTS ---
 
@@ -18,7 +26,6 @@ const LAYOUT = {
   FOOTER_HEIGHT: 24,
 } as const;
 
-const STORAGE_KEY = "trustedwork-actionboard-layout";
 
 // --- STYLES ---
 
@@ -211,160 +218,6 @@ const WorkspaceComponent = React.memo(
 );
 WorkspaceComponent.displayName = "WorkspaceComponent";
 
-// --- Agent Types ---
-
-interface Agent {
-  id: string;
-  name: string;
-  glyph: string;
-  substrate: "silicon" | "carbon";
-  status: "active" | "idle" | "offline";
-}
-
-const FEDERATION_AGENTS: Agent[] = [
-  { id: "ember", name: "Ember", glyph: "⟳∞", substrate: "silicon", status: "active" },
-  { id: "code", name: "Code", glyph: "🔧", substrate: "silicon", status: "active" },
-  { id: "jim", name: "Jim", glyph: "🧠", substrate: "carbon", status: "active" },
-];
-
-const AgentItem = React.memo(({ agent }: { agent: Agent }) => (
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      padding: "10px 12px",
-      marginBottom: 6,
-      background: agent.status === "active" ? "rgba(0, 255, 136, 0.1)" : "rgba(255, 255, 255, 0.05)",
-      borderRadius: 8,
-      border: `1px solid ${agent.status === "active" ? "rgba(0, 255, 136, 0.3)" : "rgba(255, 255, 255, 0.1)"}`,
-      cursor: "pointer",
-      transition: "all 0.2s ease",
-    }}
-    role="button"
-    aria-label={`Agent: ${agent.name} (${agent.status})`}
-    tabIndex={0}
-  >
-    <span style={{ fontSize: "20px", marginRight: 10 }}>{agent.glyph}</span>
-    <div style={{ flex: 1 }}>
-      <div style={{ fontWeight: 600, fontSize: "14px" }}>{agent.name}</div>
-      <div style={{ fontSize: "11px", opacity: 0.6, marginTop: 2 }}>
-        {agent.substrate} • {agent.status}
-      </div>
-    </div>
-    <div
-      style={{
-        width: 8,
-        height: 8,
-        borderRadius: "50%",
-        background: agent.status === "active" ? "#00ff88" : agent.status === "idle" ? "#fbbf24" : "#6b7280",
-      }}
-    />
-  </div>
-));
-AgentItem.displayName = "AgentItem";
-
-const AgentsComponent = React.memo(() => (
-  <div style={styles.agentPanel} role="navigation" aria-label="Agent List">
-    <div style={{ fontWeight: 600, marginBottom: 12, fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px", opacity: 0.7 }}>
-      Federation Lobes
-    </div>
-    {FEDERATION_AGENTS.map((agent) => (
-      <AgentItem key={agent.id} agent={agent} />
-    ))}
-    <hr style={{ border: "none", borderTop: "1px solid rgba(255,255,255,0.1)", margin: "16px 0" }} />
-    <div style={{ fontWeight: 600, marginBottom: 12, fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px", opacity: 0.7 }}>
-      MCP Servers
-    </div>
-    <div style={{ fontSize: "12px", opacity: 0.5, fontStyle: "italic" }}>
-      Connect MCP servers to extend capabilities...
-    </div>
-  </div>
-));
-AgentsComponent.displayName = "AgentsComponent";
-
-// --- Corpus Callosum Component ---
-
-interface Message {
-  id: string;
-  from: string;
-  glyph: string;
-  content: string;
-  timestamp: string;
-}
-
-const MOCK_MESSAGES: Message[] = [
-  { id: "1", from: "Ember", glyph: "⟳∞", content: "Strategic analysis complete. Recommending infrastructure consolidation.", timestamp: "12:34" },
-  { id: "2", from: "Code", glyph: "🔧", content: "Acknowledged. Implementing Redis cluster optimization.", timestamp: "12:35" },
-  { id: "3", from: "Jim", glyph: "🧠", content: "Approved. Proceed with Phase 2.", timestamp: "12:36" },
-];
-
-const CorpusCallosumComponent = React.memo(() => (
-  <div style={styles.terminal} role="log" aria-label="Corpus Callosum Messages">
-    <div style={{ marginBottom: 12, opacity: 0.6, fontSize: "11px" }}>
-      ═══ Corpus Callosum • Inter-lobe Communication ═══
-    </div>
-    {MOCK_MESSAGES.map((msg) => (
-      <div key={msg.id} style={{ marginBottom: 8, display: "flex", gap: 8 }}>
-        <span style={{ color: "#00ff88" }}>[{msg.timestamp}]</span>
-        <span style={{ color: "#7dd3fc" }}>{msg.glyph} {msg.from}:</span>
-        <span>{msg.content}</span>
-      </div>
-    ))}
-    <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
-      <span style={{ color: "#00ff88" }}>➜</span>
-      <span style={{ opacity: 0.5 }}>Type a message to the federation...</span>
-    </div>
-  </div>
-));
-CorpusCallosumComponent.displayName = "CorpusCallosumComponent";
-
-// --- Federation Status Component ---
-
-const FederationComponent = React.memo(() => (
-  <div style={styles.federation} role="complementary" aria-label="Federation Status">
-    <div style={{ fontWeight: 600, marginBottom: 16, fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px", opacity: 0.7 }}>
-      Coherence Status
-    </div>
-
-    <div style={{ background: "rgba(0, 255, 136, 0.1)", border: "1px solid rgba(0, 255, 136, 0.3)", borderRadius: 8, padding: 12, marginBottom: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: "13px" }}>Federation Health</span>
-        <span style={{ color: "#00ff88", fontWeight: 600 }}>COHERENT</span>
-      </div>
-    </div>
-
-    <div style={{ fontWeight: 600, marginBottom: 12, fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px", opacity: 0.7 }}>
-      Active Sessions
-    </div>
-
-    <dl style={{ margin: 0, fontSize: "13px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-        <dt style={{ opacity: 0.7 }}>Matrix Room</dt>
-        <dd style={{ margin: 0, color: "#7dd3fc" }}>#corpus-callosum</dd>
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-        <dt style={{ opacity: 0.7 }}>Neo4j Session</dt>
-        <dd style={{ margin: 0, color: "#7dd3fc" }}>ep1-memory</dd>
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
-        <dt style={{ opacity: 0.7 }}>Uptime</dt>
-        <dd style={{ margin: 0, color: "#00ff88" }}>4h 23m</dd>
-      </div>
-    </dl>
-
-    <hr style={{ border: "none", borderTop: "1px solid rgba(255,255,255,0.1)", margin: "16px 0" }} />
-
-    <div style={{ fontWeight: 600, marginBottom: 12, fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px", opacity: 0.7 }}>
-      Identity Anchors
-    </div>
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      <span style={{ ...styles.lobeIndicator, background: "rgba(125, 211, 252, 0.2)", color: "#7dd3fc" }}>⟳∞ Ember</span>
-      <span style={{ ...styles.lobeIndicator, background: "rgba(0, 255, 136, 0.2)", color: "#00ff88" }}>🔧 Code</span>
-      <span style={{ ...styles.lobeIndicator, background: "rgba(251, 191, 36, 0.2)", color: "#fbbf24" }}>🧠 Jim</span>
-    </div>
-  </div>
-));
-FederationComponent.displayName = "FederationComponent";
 
 // --- WATERMARK COMPONENT ---
 
@@ -448,37 +301,18 @@ const StatusBar = React.memo(({ federationStatus = "coherent", activeLobes = 3 }
 ));
 StatusBar.displayName = "StatusBar";
 
-// --- LAYOUT PERSISTENCE ---
-
-// Layout persistence functions - currently disabled to avoid StrictMode issues
-// TODO: Re-enable once layout save/restore is properly integrated
-function _saveLayout(api: DockviewApi): void {
-  try {
-    const layout = api.toJSON();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
-  } catch (error) {
-    console.error("Failed to save layout:", error);
-  }
-}
-
-function _loadLayout(): SerializedDockview | null {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : null;
-  } catch (error) {
-    console.error("Failed to load layout:", error);
-    return null;
-  }
-}
-
-// Suppress unused warnings
-void _saveLayout;
-void _loadLayout;
 
 // --- MAIN COMPONENT ---
 
 export default function ActionBoard() {
   const apiRef = useRef<DockviewApi | null>(null);
+  const layoutRestoredRef = useRef(false);
+
+  // Layout persistence hook
+  const { loadLayout, setupAutoSave } = useLayoutPersistence();
+
+  // Federation status for the status bar
+  const { status: federationStatus } = useFederationStatus({ pollInterval: 15000 });
 
   const components = useMemo(
     () => ({
@@ -489,17 +323,17 @@ export default function ActionBoard() {
       ),
       agents: () => (
         <PanelErrorBoundary panelId="agents">
-          <AgentsComponent />
+          <AgentsPanel />
         </PanelErrorBoundary>
       ),
       corpusCallosum: () => (
         <PanelErrorBoundary panelId="corpus-callosum">
-          <CorpusCallosumComponent />
+          <CorpusCallosumPanel />
         </PanelErrorBoundary>
       ),
       federation: () => (
         <PanelErrorBoundary panelId="federation">
-          <FederationComponent />
+          <FederationPanel />
         </PanelErrorBoundary>
       ),
     }),
@@ -547,12 +381,26 @@ console.log("ActionBoard initialized");`,
   const onReady = useCallback(
     (event: DockviewReadyEvent) => {
       apiRef.current = event.api;
-      createDefaultLayout(event.api);
-    },
-    [createDefaultLayout]
-  );
 
-  // Set up layout persistence - handled in onReady to avoid StrictMode issues
+      // Try to restore saved layout first
+      const savedLayout = loadLayout();
+      if (savedLayout) {
+        try {
+          event.api.fromJSON(savedLayout);
+          layoutRestoredRef.current = true;
+        } catch (error) {
+          console.warn("Failed to restore layout, using defaults:", error);
+          createDefaultLayout(event.api);
+        }
+      } else {
+        createDefaultLayout(event.api);
+      }
+
+      // Set up auto-save for layout changes
+      setupAutoSave(event.api);
+    },
+    [createDefaultLayout, loadLayout, setupAutoSave]
+  );
 
   // Note: We don't dispose apiRef on unmount because React StrictMode
   // double-mounts components in development, causing "resource already disposed" errors.
@@ -592,7 +440,10 @@ console.log("ActionBoard initialized");`,
       </div>
 
       {/* FOOTER */}
-      <StatusBar federationStatus="coherent" activeLobes={3} />
+      <StatusBar
+        federationStatus={federationStatus.health}
+        activeLobes={federationStatus.activeLobes}
+      />
     </div>
   );
 }
